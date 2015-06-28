@@ -65,8 +65,20 @@ public class DHT {
         return peer;
     }
 
+
     public static void main(String[] args) throws NumberFormatException, Exception {
-        DHT dns = new DHT(Integer.parseInt(args[0]));
+        //DHT dns = new DHT(Integer.parseInt(args[0]));
+        System.out.println(args[0]);
+        System.out.println(args[1]);
+        Random rnd = new Random();
+        Peer peer = new PeerMaker(new Number160(rnd)).setPorts(4001).makeAndListen();
+        Peer another = new PeerMaker(new Number160(rnd)).setMasterPeer(peer).makeAndListen();
+        FutureDiscover future = another.discover().setPeerAddress(peer.getPeerAddress()).start();
+        Data d = new Data("test");
+        Number160 nr = new Number160(rnd);
+        FutureDHT futureDHT = peer.put(nr).setData(d).start();
+        futureDHT.awaitUninterruptibly();
+        peer.shutdown();
         /**if (args.length == 3) {
             dns.store(args[1], args[2]);
         }
