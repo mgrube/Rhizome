@@ -7,6 +7,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Random;
 import java.net.InetAddress;
 import java.io.IOException;
+
+import net.tomp2p.connection.Bindings;
 import net.tomp2p.futures.FutureDHT;
 import net.tomp2p.futures.FutureBootstrap;
 import net.tomp2p.futures.FutureDiscover;
@@ -25,6 +27,7 @@ public class DHT {
 
     final private Peer peer;
 
+
     public DHT(int peerId) throws Exception {
         peer = new PeerMaker(Number160.createHash(peerId)).setPorts(4000 + peerId).makeAndListen();
         FutureBootstrap fb = peer.bootstrap().setBroadcast().setPorts(4001).start();
@@ -39,21 +42,27 @@ public class DHT {
      * Pass a bootstrap IP and port
      * @return a new peer
      */
-    public Peer spawnPeer(String bootstrapnode, Boolean isBootstrapNode){
+    public Peer spawnPeer(String bootstrapnode, int port,  Boolean isBootstrapNode){
         Peer peer = null;
         try {
             KeyPairGenerator gen = KeyPairGenerator.getInstance("DSA");
             KeyPair pair1 = gen.generateKeyPair();
             //Peer peer = new PeerMaker(new Number160(rnd)).setPorts(4001).makeAndListen();
+            Random rnd = new Random();
+            Bindings b = new Bindings();
+            peer = new PeerMaker(pair1).setPorts(port).setBindings(b).makeAndListen();
+            peer.getConfiguration().setBehindFirewall(true);
             if(isBootstrapNode) {
-                peer = new PeerMaker(pair1).setPorts(4001).makeAndListen();
+                return peer;
             }
             else{
                 InetAddress address = Inet4Address.getByName(bootstrapnode);
-                FutureDiscover futureDiscover = peer.discover().setInetAddress( address ).setPorts( 4000 ).start();
+                FutureDiscover futureDiscover = peer.discover().setInetAddress( address ).setPorts( port ).start();
                 futureDiscover.awaitUninterruptibly();
-                FutureBootstrap futureBootstrap = peer.bootstrap().setInetAddress( address ).setPorts( 4000 ).start();
+                FutureBootstrap futureBootstrap = peer.bootstrap().setInetAddress( address ).setPorts( port ).start();
                 futureBootstrap.awaitUninterruptibly();
+                return peer;
+
             }
         }
         catch(IOException e){
@@ -67,25 +76,17 @@ public class DHT {
 
 
     public static void main(String[] args) throws NumberFormatException, Exception {
-        //DHT dns = new DHT(Integer.parseInt(args[0]));
+        DHT d = new DHT(1234);
         System.out.println(args[0]);
         System.out.println(args[1]);
-        Random rnd = new Random();
-        Peer peer = new PeerMaker(new Number160(rnd)).setPorts(4001).makeAndListen();
-        Peer another = new PeerMaker(new Number160(rnd)).setMasterPeer(peer).makeAndListen();
-        FutureDiscover future = another.discover().setPeerAddress(peer.getPeerAddress()).start();
-        Data d = new Data("test");
-        Number160 nr = new Number160(rnd);
-        FutureDHT futureDHT = peer.put(nr).setData(d).start();
-        futureDHT.awaitUninterruptibly();
-        peer.shutdown();
-        /**if (args.length == 3) {
-            dns.store(args[1], args[2]);
-        }
-        if (args.length == 2) {
-            System.out.println("Name:" + args[1] + " IP:" + dns.get(args[1]));
-        }*/
-        //FutureDiscover
+        //Peer p = d.spawnPeer("", 4000, true);
+        Peer a = d.spawnPeer(args[0], Integer.parseInt(args[1]), false);
+        System.out.println(a);
+        System.out.println("Successful?");
+        //p.shutdown();
+        a.shutdown();
+        System.exit(0);
+        //p.shutdown();
     }
 
     private String get(String name) throws ClassNotFoundException, IOException {
