@@ -1,9 +1,7 @@
 package cc.telepath;
 
-
-
 /**
- * Created by michael on 7/19/15.
+ * A convenience class to get system info.
  */
 public class SystemProfiler {
     private String OSName;
